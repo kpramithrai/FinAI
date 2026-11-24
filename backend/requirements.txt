@@ -1,0 +1,6 @@
+google-adk>=2.10,<3
+litellm
+chromadb
+rank_bm25
+fastapi
+uvicorn

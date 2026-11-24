@@ -1,0 +1,106 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@source "../node_modules/streamdown/dist/*.js";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: "Avenir Next", "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-danger-surface: #fff2f3;
+  --color-danger-border: #efbdc5;
+  --color-warning: #754600;
+  --color-warning-surface: #fff7e8;
+  --color-warning-border: #ebd3a5;
+  --color-success: #246649;
+  --color-success-surface: #eef8f2;
+  --color-success-border: #bcdecb;
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+  color-scheme: light;
+  --radius: 0.625rem;
+  --background: #ffffff;
+  --foreground: #142536;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: #0369a1;
+  --primary-foreground: #ffffff;
+  --secondary: #f0f7fb;
+  --secondary-foreground: var(--foreground);
+  --muted: #f5f8fa;
+  --muted-foreground: #485d6d;
+  --accent: #e0f2fe;
+  --accent-foreground: #075985;
+  --destructive: #a52239;
+  --border: #dbe7ef;
+  --input: #a6c2d3;
+  --ring: #0284c7;
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #e8f5fd;
+  --sidebar-accent-foreground: var(--accent-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+@layer components {
+  .brief-background {
+    position: relative;
+    background-color: var(--background);
+  }
+
+  .brief-background::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: min(100%, clamp(34rem, 78vh, 54rem));
+    background:
+      linear-gradient(to bottom, transparent 87%, var(--background)),
+      url("/briefline-sky.webp") center top / max(100%, 39rem) 100% no-repeat;
+    pointer-events: none;
+  }
+}
