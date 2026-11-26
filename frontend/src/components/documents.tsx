@@ -317,52 +317,16 @@ export function SdlcDocument({ sdlc }: { sdlc: SDLC }) {
       file="finai-workflow.json"
       data={sdlc}
       stats={[
-        { label: "phases", value: sdlc.workflow.length },
         { label: "models compared", value: sdlc.ranking.length },
         { label: "decision factors", value: sdlc.factors.length },
       ]}
     >
       <DocTabs
         tabs={[
-          { value: "workflow", label: "Workflow" },
           { value: "models", label: "Model comparison" },
           { value: "factors", label: "Decision factors" },
         ]}
       >
-        <TabsContent value="workflow">
-          <ol className="relative">
-            {sdlc.workflow.map((p, i) => (
-              <li key={i} className="relative flex gap-4 pb-6 last:pb-0">
-                {i < sdlc.workflow.length - 1 && (
-                  <span className="absolute left-[13px] top-8 bottom-0 w-px bg-border" aria-hidden />
-                )}
-                <span className="z-10 flex size-7 shrink-0 items-center justify-center rounded-full border bg-background text-xs font-medium">
-                  {i + 1}
-                </span>
-                <div className="min-w-0 flex-1 space-y-2.5 pt-0.5">
-                  <h4 className="text-sm font-semibold">{p.phase}</h4>
-                  <p className="text-sm leading-relaxed text-foreground/80">{p.activities}</p>
-                  <dl className="grid gap-2 text-sm sm:grid-cols-2">
-                    <div className="rounded-xl bg-muted/50 px-3 py-2">
-                      <dt className="text-xs text-muted-foreground">People</dt>
-                      <dd>{p.roles}</dd>
-                    </div>
-                    <div className="rounded-xl bg-muted/50 px-3 py-2">
-                      <dt className="text-xs text-muted-foreground">Deliverables</dt>
-                      <dd>{p.deliverables}</dd>
-                    </div>
-                  </dl>
-                  <div className="flex items-start gap-2 rounded-xl border border-success-border bg-success-surface px-3 py-2 text-sm text-success">
-                    <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                    <span>{p.gate}</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Covers {p.reqs}</p>
-                </div>
-              </li>
-            ))}
-          </ol>
-        </TabsContent>
-
         <TabsContent value="models" className="space-y-2">
           <p className="mb-3 text-sm text-muted-foreground">
             FinAI ranks development models using fixed weights for each decision factor.
@@ -389,7 +353,7 @@ export function SdlcDocument({ sdlc }: { sdlc: SDLC }) {
                     style={{ width: `${r.score}%` }}
                   />
                 </div>
-                <p className="text-xs leading-relaxed text-muted-foreground">{r.why}</p>
+                <p className="text-xs leading-relaxed text-muted-foreground">Fits: {r.fit}. Trade-off: {r.miss}.</p>
               </div>
             </div>
           ))}

@@ -21,8 +21,8 @@
 
 FinAI is a course project for software engineering. You chat with one assistant, FinAI, and two AI agents do the work behind it:
 
-1. The **Analyst** reads your brief, asks about anything unclear and writes a software requirements specification (SRS).
-2. The **SDLC Planner** reads that SRS and recommends a development lifecycle, with a step-by-step workflow.
+1. The **Analyst** reads your brief and writes a software requirements specification (SRS).
+2. The **SDLC Planner** reads that SRS and recommends a development lifecycle.
 
 Everything runs on your own computer. The model runs in LM Studio, and FinAI masks PAN, Aadhaar, card numbers, emails and phone numbers before any text reaches it.
 
@@ -32,8 +32,8 @@ Everything runs on your own computer. The model runs in LM Studio, and FinAI mas
 <tr>
 <td width="50%" valign="top">
 
-### Clarifying questions
-The Analyst asks short clarifying questions, one card at a time. Each card has suggested answers, a box for your own answer and a Skip option. A skipped question becomes an open issue in the SRS.
+### Clear open issues
+The Analyst records unclear or missing details as open issues in the SRS rather than pausing the pipeline.
 
 </td>
 <td width="50%" valign="top">
@@ -46,14 +46,14 @@ The SRS lists requirements with a category, a priority and a measurable acceptan
 <tr>
 <td valign="top">
 
-### Your approval before the hand-off
-FinAI stops and asks before it sends the SRS to the planner. Click Allow to continue, or Request changes and type what to revise, and the Analyst writes an updated version.
+### Automatic hand-off
+FinAI sends the SRS to the planner immediately after creating it, then marks the finished draft for human review.
 
 </td>
 <td valign="top">
 
 ### SDLC recommendation
-FinAI scores seven lifecycles and explains the winner. Tabs show the full ranking, a phased workflow with exit gates, the 13 decision factors and why the other models scored lower.
+FinAI scores seven lifecycles and explains the winner. Tabs show the ranking and the 13 decision factors.
 
 </td>
 </tr>
@@ -87,7 +87,7 @@ flowchart LR
   P --> M
 ```
 
-The chat app sends your brief to the FinAI server. The server runs the two agents in order and pauses whenever it needs your answer or approval. Both agents are Google ADK agents that call a model running in LM Studio, and every session event is logged to `backend/runs/<session>.jsonl`.
+The chat app sends your brief to the FinAI server. The server runs the two agents in order without pausing for questions or approval. Both agents are Google ADK agents that call a model running in LM Studio, and every session event is logged to `backend/runs/<session>.jsonl`.
 
 The backend has three files:
 
@@ -103,7 +103,7 @@ Before each step, FinAI searches 16 real documents in `backend/corpus/` for the 
 
 ### How the lifecycle is chosen
 
-The SDLC Planner rates 13 factors as Low, Medium or High, such as regulatory pressure, security risk and how often the requirements will change. A fixed scoring table in `rules.py` then scores Waterfall, V-Model, Spiral, Agile, DevSecOps, RAD and a hybrid of Agile and the V-Model. The model does not pick the winner, so the same ratings always give the same ranking. The planner only writes the explanation and the workflow.
+The SDLC Planner rates 13 factors as Low, Medium or High, such as regulatory pressure, security risk and how often the requirements will change. A fixed scoring table in `rules.py` then scores Waterfall, V-Model, Spiral, Prototyping, Iterative, Agile and RAD. The model does not pick the winner, so the same ratings always give the same ranking. The planner only writes the explanation.
 
 ## Sequence diagram
 
@@ -114,17 +114,11 @@ sequenceDiagram
   participant A as Analyst
   participant S as SDLC Planner
   U->>F: Describe the system
-  F->>A: Find what is unclear
-  A-->>F: Clarifying questions
-  F-->>U: Show the questions
-  U->>F: Answers
   F->>A: Write the SRS
   A-->>F: SRS
-  F-->>U: Show the SRS and ask for approval
-  U->>F: Allow
   F->>S: Recommend a lifecycle for this SRS
-  S-->>F: Recommendation and workflow
-  F-->>U: Show the result and ask for a human review
+  S-->>F: Recommendation and explanation
+  F-->>U: Show the result for human review
 ```
 
 ## Run it locally

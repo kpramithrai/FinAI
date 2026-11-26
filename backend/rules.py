@@ -71,9 +71,24 @@ def search(query: str, k: int = 4) -> dict[str, str]:
 
 def plain(text: str) -> str:
     """Remove evidence labels (E1…E5) from text people read; the source field keeps the real citation."""
-    text = re.sub(r"\s*\((?:E\d[,;\s]*)+\)", "", text)
-    text = re.sub(r"\bE\d\b", "the regulation", text)
+    labels = r"E\d(?:\s*[,;]\s*E\d)*(?:\s*,?\s*and\s+E\d)?"
+    text = re.sub(rf"\s*\(\s*citing\s+{labels}\s*\)", "", text, flags=re.I)
+    text = re.sub(rf"\s*\(\s*{labels}\s*\)", "", text, flags=re.I)
+    text = re.sub(r"\bE\d(?:\s*,\s*E\d)*(?:\s*,?\s*and\s*E\d)?\b", "the regulation", text)
     return text[:1].upper() + text[1:]
+
+
+def clip(text: str, limit: int = 80) -> str:
+    """Keep complete clauses within a display limit, otherwise finish at a word boundary."""
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+    prefix = text[: limit + 1]
+    ends = [m.end() for m in re.finditer(r"[.;:](?=\s|$)", prefix)]
+    if ends:
+        return text[:ends[-1]].rstrip()
+    word = text[:limit].rsplit(" ", 1)[0].rstrip()
+    return (word or text[:limit].rstrip()) + "…"
 
 
 VAGUE = re.compile(r"\b(fast|quick|easy|user[- ]friendly|real[- ]time|secure|robust|efficient|appropriate|as needed|etc)\b", re.I)
@@ -117,24 +132,21 @@ FACTORS = [
 ]
 LEVEL = {"Low": 0, "Medium": 1, "High": 2}
 
-# Base score + weight per factor (applied to Low=0 / Medium=1 / High=2). Built from corpus/product/sdlc-selection-criteria.txt:
-# stable + approvals → Waterfall; strict V&V → V-Model; uncertainty/risk → Spiral; changing → Agile;
-# continuous secure deployment → DevSecOps; rapid → RAD; regulated + evolving → Agile–V-Model hybrid.
+# Base score + weight per factor (applied to Low=0 / Medium=1 / High=2).
 MODELS = {
     "Waterfall": (50, {"Requirement stability": 10, "Testing and documentation formality": 5, "Regulatory criticality": 3,
                        "Expected change frequency": -10, "Need for continuous delivery": -6, "Project complexity": -3, "System size": -2}),
     "V-Model": (50, {"Need for formal verification": 8, "Testing and documentation formality": 6, "Regulatory criticality": 6,
                      "Failure consequence": 5, "Requirement stability": 5, "Expected change frequency": -8, "Need for continuous delivery": -5}),
     "Spiral": (57, {"Failure consequence": 6, "Project complexity": 7, "System size": 3, "Requirement stability": -6}),
+    "Prototyping": (55, {"Expected change frequency": 8, "Stakeholder availability": 10, "Requirement stability": -6,
+                          "Project complexity": 3, "Failure consequence": -5, "Regulatory criticality": -4}),
+    "Iterative": (52, {"Project complexity": 6, "System size": 5, "Expected change frequency": 5,
+                         "Legacy-system dependence": 4, "Requirement stability": -3, "Stakeholder availability": 3}),
     "Agile": (50, {"Expected change frequency": 10, "Need for continuous delivery": 6, "Stakeholder availability": 5,
                    "Testing and documentation formality": -6, "Regulatory criticality": -5, "Requirement stability": -3}),
-    "DevSecOps": (40, {"Need for continuous delivery": 10, "Security risk": 7, "Expected change frequency": 4,
-                       "Testing and documentation formality": -2}),
     "RAD": (52, {"Expected change frequency": 5, "Budget and schedule pressure": 4, "Project complexity": -6,
                  "Failure consequence": -6, "Regulatory criticality": -6}),
-    "Agile–V-Model hybrid": (46, {"Regulatory criticality": 6, "Expected change frequency": 6, "Need for formal verification": 5,
-                                  "Security risk": 3, "Testing and documentation formality": 3, "Need for continuous delivery": 2,
-                                  "Requirement stability": -2}),
 }
 
 
@@ -143,20 +155,26 @@ WHY = {
     "Waterfall": ("stable requirements and extensive approvals", "testing comes late, so verification evidence arrives after design is locked"),
     "V-Model": ("strict verification and validation: every build phase has a matching test phase", "rigid once a phase closes; late changes are expensive"),
     "Spiral": ("risk-driven loops for high uncertainty or technical risk", "heavy risk analysis each loop is costly when requirements are clear"),
+    "Prototyping": ("early models help clarify uncertain user needs", "a prototype alone is not enough for high-assurance delivery"),
+    "Iterative": ("incremental releases manage complex systems and learning", "needs disciplined planning across repeated cycles"),
     "Agile": ("short iterations absorb frequently changing requirements", "light documentation clashes with formal audit and sign-off"),
-    "DevSecOps": ("continuous secure deployment with automated security checks", "its value is continuous delivery, which this project needs little of"),
     "RAD": ("rapid prototyping for small, low-risk systems", "too little rigour for high-risk or regulated systems"),
-    "Agile–V-Model hybrid": ("high regulation with evolving requirements: iterations plus V-Model verification gates", "two processes to run; only pays off when requirements keep changing"),
 }
 
 
+def explain(levels: dict[str, str]) -> list[dict]:
+    """Every model, best first, with its transparent score calculation."""
+    rows = []
+    for model, (base, weights) in MODELS.items():
+        drivers = [{"factor": factor, "level": levels.get(factor, "Medium"), "points": weight * LEVEL.get(levels.get(factor, "Medium"), 1)}
+                   for factor, weight in weights.items()]
+        score = max(5, min(97, base + sum(driver["points"] for driver in drivers)))
+        rows.append({"model": model, "score": score, "base": base, "drivers": drivers, "fit": WHY[model][0], "miss": WHY[model][1]})
+    return sorted(rows, key=lambda row: -row["score"])
+
+
 def rank(levels: dict[str, str]) -> list[tuple[str, int]]:
-    """[(model, score 5–97)] best first. Same input → same ranking, so it can't contradict the choice."""
-    scores = {
-        m: max(5, min(97, base + sum(w * LEVEL.get(levels.get(f, "Medium"), 1) for f, w in weights.items())))
-        for m, (base, weights) in MODELS.items()
-    }
-    return sorted(scores.items(), key=lambda kv: -kv[1])
+    return [(row["model"], row["score"]) for row in explain(levels)]
 
 
 if __name__ == "__main__":  # self-check: python rules.py
@@ -167,11 +185,21 @@ if __name__ == "__main__":  # self-check: python rules.py
     assert [t["test"] for t in srs["traceability"]] == ["TC001", "TC002"] and srs["requirements"][0]["source"] == "NEEDS-VALIDATION"
     assert srs["requirements"][0]["statement"] == "Log in."
     assert validate({"requirements": [], "title": "UPI App - SRS Overview"}, set())["title"] == "UPI App"
-    assert plain("High risk (E1, E2) as required by E3.") == "High risk as required by the regulation."
+    assert plain("High risk (citing E1, E2) as required by E3.") == "High risk as required by the regulation."
+    assert plain("E1, E2 and E3 require review.") == "The regulation require review."
+    assert clip("One short sentence. A much longer second sentence that does not fit.", 25) == "One short sentence."
+    assert clip("Words without a full stop must stop at a whole word", 22) == "Words without a full…"
+    assert set(MODELS) == {"Waterfall", "V-Model", "Spiral", "Prototyping", "Iterative", "Agile", "RAD"} == set(WHY)
     assert {f["type"] for f in srs["findings"]} == {"Ambiguity", "Conflict", "Incompleteness"}
     bank = dict.fromkeys(FACTORS, "Medium") | {f: "High" for f in ["Requirement stability", "Regulatory criticality",
             "Need for formal verification", "Testing and documentation formality", "Failure consequence"]} | {"Expected change frequency": "Low"}
     assert rank(bank)[0][0] == "V-Model"
     shop = dict.fromkeys(FACTORS, "Low") | {"Expected change frequency": "High", "Need for continuous delivery": "High", "Security risk": "High"}
-    assert rank(shop)[0][0] in ("Agile", "DevSecOps")
+    assert rank(shop)[0][0] in ("Agile", "Iterative")
+    unclear = dict.fromkeys(FACTORS, "Low") | {"Expected change frequency": "High", "Stakeholder availability": "High", "Requirement stability": "Low"}
+    assert rank(unclear)[0][0] == "Prototyping"
+    big = dict.fromkeys(FACTORS, "Medium") | {"Project complexity": "High", "System size": "High", "Failure consequence": "High"}
+    assert rank(big)[0][0] in ("Iterative", "Spiral")
+    proof = explain(bank)[0]
+    assert proof["score"] == max(5, min(97, proof["base"] + sum(d["points"] for d in proof["drivers"])))
     print(f"ok — {len(CHUNKS)} chunks indexed")
