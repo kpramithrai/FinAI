@@ -142,11 +142,11 @@ async def ask(agent: LlmAgent, step: tuple[str, type[BaseModel]], context: str, 
     """Run one step of an agent on a fresh ADK session; return its schema-checked JSON. Appends a span to `trace`."""
     task, schema = step
     span = {"name": f"{agent.name} · {schema.__name__}", "kind": "llm", "start": time.time(), "tokens": 0, "input": task, "output": ""}
-    runner = InMemoryRunner(agent=agent.clone(update={"output_schema": schema}), app_name="pico")
-    session = await runner.session_service.create_session(app_name="pico", user_id="pico")
+    runner = InMemoryRunner(agent=agent.clone(update={"output_schema": schema}), app_name="FinAI")
+    session = await runner.session_service.create_session(app_name="FinAI", user_id="FinAI")
     message = types.Content(role="user", parts=[types.Part(text=f"Task: {task}\n\n{context}")])
     try:
-        async for event in runner.run_async(user_id="pico", session_id=session.id, new_message=message):
+        async for event in runner.run_async(user_id="FinAI", session_id=session.id, new_message=message):
             span["tokens"] += (event.usage_metadata and event.usage_metadata.total_token_count) or 0
             if event.content and event.content.parts:
                 span["output"] = "".join(p.text or "" for p in event.content.parts) or span["output"]

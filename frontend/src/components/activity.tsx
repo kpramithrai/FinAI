@@ -34,7 +34,7 @@ export function SpanRow({ span }: { span: Span }) {
 }
 
 function displayName(who: string) {
-  if (who === "pico" || who === "bearbots") return "FinAI";
+  if (who === "FinAI" || who === "finai") return "FinAI";
   return who.charAt(0).toUpperCase() + who.slice(1);
 }
 

@@ -1,4 +1,4 @@
-"""BearBots: the API the chat UI talks to, and the fixed pipeline that runs the two agents.
+"""FinAI: the API the chat UI talks to, and the fixed pipeline that runs the two agents.
 
 Run:  uvicorn server:app --port 8000
 """
@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 import rules
 from agents import OVERVIEW, PLAN, QUESTIONS, RATE, REQUIREMENTS, analyst, ask, planner
 
-app = FastAPI(title="BearBots")
+app = FastAPI(title="FinAI")
 LOGS = Path(__file__).parent / "runs"
 LOGS.mkdir(exist_ok=True)
 
@@ -56,7 +56,7 @@ class Session:
         return hits
 
     async def say(self, text: str):
-        await self.push("bot", **{"from": "bearbots", "text": text})
+        await self.push("bot", **{"from": "FinAI", "text": text})
 
     async def wait_for(self, item_id: str):
         future = self.waiting.setdefault(item_id, asyncio.get_running_loop().create_future())
@@ -96,7 +96,7 @@ async def run(s: Session, brief: str):
     """Intake → clarify (pause) → SRS → approval (pause) → SDLC → human review."""
     brief = rules.mask(brief)
     await s.emit("stage", stage="intake")
-    await s.push("event", icon="wake", text="BearBots is waking up")
+    await s.push("event", icon="wake", text="FinAI is waking up")
     await s.say("On it. I'll have the **Analyst** read your brief against the regulations library first.")
 
     # Agent (i), step 1: find gaps and ask about them.
@@ -106,8 +106,8 @@ async def run(s: Session, brief: str):
     for i, q in enumerate(asked["questions"], 1):
         q["id"] = f"q{i}"  # the model's ids can be blank or repeated
         q["text"], q["why"] = rules.plain(q["text"]), rules.plain(q["why"])
-    await s.delegate(("bearbots", "analyst", "Brief attached. Find what blocks testable requirements."),
-                     ("analyst", "bearbots", f"Read {len(hits)} passages ({', '.join(sorted({h.split('/')[1].split('.')[0] for h in hits}))}). {len(asked['questions'])} gaps to ask about."))
+    await s.delegate(("FinAI", "analyst", "Brief attached. Find what blocks testable requirements."),
+                     ("analyst", "FinAI", f"Read {len(hits)} passages ({', '.join(sorted({h.split('/')[1].split('.')[0] for h in hits}))}). {len(asked['questions'])} gaps to ask about."))
 
     await s.emit("stage", stage="clarify")
     await s.say("A few things in the brief are unclear. I'll ask one at a time — pick an option, write your own, or skip.")
@@ -128,8 +128,8 @@ async def run(s: Session, brief: str):
         for r in reqs["requirements"]:
             r["source"] = labels.get(r["source"], r["source"])
         srs = rules.validate(overview | reqs, set(hits))
-        await s.delegate(("bearbots", "analyst", f"Answers attached. Write SRS v{version}."),
-                         ("analyst", "bearbots", f"{len(srs['requirements'])} requirements from {len(hits)} passages; {len(srs['findings'])} quality findings."))
+        await s.delegate(("FinAI", "analyst", f"Answers attached. Write SRS v{version}."),
+                         ("analyst", "FinAI", f"{len(srs['requirements'])} requirements from {len(hits)} passages; {len(srs['findings'])} quality findings."))
         await s.emit("stage", stage="srs")
         await s.push("event", icon="doc", text="Updated document" if version > 1 else "Created document", strong=f"SRS v{version} · {srs['title']}")
         await s.push("srs", srs=srs)
@@ -137,7 +137,7 @@ async def run(s: Session, brief: str):
 
         planning = asyncio.create_task(plan_sdlc(srs, s.trace))  # start the planner while the user reads the SRS
         await s.emit("stage", stage="handoff")
-        aid = await s.push("approval", **{"from": "bearbots"}, title="BearBots wants to hand off the SRS", status="pending",
+        aid = await s.push("approval", **{"from": "FinAI"}, title="FinAI wants to hand off the SRS", status="pending",
                            subtitle="Send it to the SDLC Planner for a lifecycle recommendation.",
                            breakdown=[["Requirements", str(len(srs["requirements"]))], ["Quality findings", str(len(srs["findings"]))],
                                       ["Open issues", str(len(srs["openIssues"]))], ["Traced to tests", f"{len(srs['traceability'])} / {len(srs['requirements'])}"]],
@@ -156,9 +156,9 @@ async def run(s: Session, brief: str):
     await s.emit("working", agents=["planner"])
     sdlc = await planning
     chosen, ranking = sdlc["chosen"], sdlc["ranking"]
-    await s.delegate(("bearbots", "planner", f"SRS v{version} attached ({len(srs['requirements'])} requirements). Recommend a lifecycle."),
-                     ("planner", "bearbots", f"Rated {len(sdlc['factors'])} decision factors; scored {len(ranking)} models."),
-                     ("planner", "bearbots", f"{chosen} leads at {ranking[0]['score']}/100; {ranking[1]['model']} next at {ranking[1]['score']}."))
+    await s.delegate(("FinAI", "planner", f"SRS v{version} attached ({len(srs['requirements'])} requirements). Recommend a lifecycle."),
+                     ("planner", "FinAI", f"Rated {len(sdlc['factors'])} decision factors; scored {len(ranking)} models."),
+                     ("planner", "FinAI", f"{chosen} leads at {ranking[0]['score']}/100; {ranking[1]['model']} next at {ranking[1]['score']}."))
     await s.push("event", icon="doc", text="Created document", strong="SDLC recommendation")
     await s.push("sdlc", sdlc=sdlc)
 
@@ -174,8 +174,8 @@ async def guarded(s: Session, brief: str):
     except Exception as e:  # model offline, bad JSON, … — tell the user instead of hanging
         await s.emit("working", agents=[])
         if len(s.trace) > s.shown:
-            await s.delegate(("bearbots", "bearbots", "This step failed; open the trace for details."))
-        await s.push("bot", **{"from": "bearbots"}, text=f"Something went wrong: `{type(e).__name__}: {str(e)[:200]}`. Is LM Studio running with the model loaded?")
+            await s.delegate(("FinAI", "FinAI", "This step failed; open the trace for details."))
+        await s.push("bot", **{"from": "FinAI"}, text=f"Something went wrong: `{type(e).__name__}: {str(e)[:200]}`. Is LM Studio running with the model loaded?")
         await s.emit("stage", stage="done")
 
 

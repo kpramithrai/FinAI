@@ -45,7 +45,7 @@ export async function request<T>(path: string, body?: unknown): Promise<T> {
 function readHistory(): Project[] {
   try {
     const saved: unknown = JSON.parse(
-      localStorage.getItem("pico.projects.v1") || "[]",
+      localStorage.getItem("FinAI.projects.v1") || "[]",
     );
     return Array.isArray(saved)
       ? saved
@@ -74,7 +74,7 @@ export function useProject() {
   const [connected, setConnected] = useState(false);
   useEffect(() => {
     try {
-      localStorage.setItem("pico.projects.v1", JSON.stringify(history));
+      localStorage.setItem("FinAI.projects.v1", JSON.stringify(history));
     } catch {
       /* Storage can be disabled. */
     }

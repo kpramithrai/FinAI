@@ -74,7 +74,7 @@ function Approval({
 }) {
   const [sent, setSent] = useState("");
   const status = item.status && item.status !== "pending" ? item.status : sent;
-  const title = item.title === "BearBots wants to hand off the SRS"
+  const title = item.title === "FinAI wants to hand off the SRS"
     ? "Send requirements to the planner?"
     : item.title || "Ready for the next step?";
 
@@ -281,7 +281,7 @@ function Row({
       ) : (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="size-1.5 rounded-full bg-emerald-500" />
-          {item.text === "BearBots is waking up" ? "Project started" : item.text}
+          {item.text === "FinAI is waking up" ? "Project started" : item.text}
         </div>
       );
     case "delegation":
