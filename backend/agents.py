@@ -1,4 +1,4 @@
-"""The two ADK agents.
+"""The three ADK agents.
 
 Analyst (i) runs REQUIREMENTS and OVERVIEW together. Planner (ii) runs RATE, then PLAN.
 Every step must answer in a fixed JSON shape (Pydantic), which LM Studio enforces while generating.
@@ -79,6 +79,71 @@ class Plan(BaseModel):
     justification: str = Field(max_length=600, description="2-3 plain sentences")
 
 
+class Definition(BaseModel):
+    term: str = Field(max_length=50)
+    definition: str = Field(max_length=160)
+
+
+class IeeeUser(BaseModel):
+    user: str = Field(max_length=60)
+    characteristics: str = Field(max_length=160)
+
+
+class IeeeIntro(BaseModel):
+    purpose: str = Field(max_length=300)
+    included: list[str] = Field(max_length=6)
+    excluded: list[str] = Field(max_length=5)
+    definitions: list[Definition] = Field(max_length=8)
+    perspective: str = Field(max_length=300)
+    productFunctions: list[str] = Field(max_length=8)
+    users: list[IeeeUser] = Field(max_length=5)
+    constraints: list[str] = Field(max_length=6)
+    dependencies: list[str] = Field(max_length=5)
+
+
+class IeeeInterfaces(BaseModel):
+    user: list[str] = Field(max_length=4)
+    hardware: list[str] = Field(max_length=3)
+    software: list[str] = Field(max_length=4)
+    communication: list[str] = Field(max_length=3)
+    file: list[str] = Field(max_length=3)
+
+
+class IeeeFunction(BaseModel):
+    name: str = Field(max_length=80)
+    input: str = Field(max_length=160)
+    processing: list[str] = Field(max_length=5)
+    output: str = Field(max_length=160)
+    requirement: str = Field(max_length=220, description='One black-box "The system shall ..." requirement')
+
+
+class IeeeEntity(BaseModel):
+    entity: str = Field(max_length=60)
+    attributes: list[str] = Field(max_length=8)
+
+
+class IeeeQuality(BaseModel):
+    attribute: str = Field(max_length=60)
+    requirement: str = Field(max_length=220, description='One black-box "The system shall ..." requirement')
+
+
+class IeeeActor(BaseModel):
+    actor: str = Field(max_length=60)
+    useCases: list[str] = Field(max_length=6)
+
+
+class IeeeSpecific(BaseModel):
+    interfaces: IeeeInterfaces
+    functions: list[IeeeFunction] = Field(max_length=8)
+    performance: list[str] = Field(max_length=5)
+    entities: list[IeeeEntity] = Field(max_length=6)
+    relationships: list[str] = Field(max_length=8)
+    designConstraints: list[str] = Field(max_length=6)
+    quality: list[IeeeQuality] = Field(max_length=6)
+    actors: list[IeeeActor] = Field(max_length=5)
+    businessRules: list[str] = Field(max_length=8)
+
+
 # ---------- The two agents ----------
 
 GROUND = (
@@ -95,6 +160,11 @@ analyst = LlmAgent(name="analyst", model=MODEL, instruction=(
 planner = LlmAgent(name="planner", model=MODEL, instruction=(
     "You are a software process expert who picks and plans the SDLC for a finance project from its SRS." + GROUND))
 
+writer = LlmAgent(name="writer", model=MODEL, instruction=(
+    "You are an IEEE Std 830-1998 software requirements writer. Write concise black-box requirements: state what the "
+    "software shall do, never how it is implemented. Do not include costs, schedules, or test plans. Preserve only claims "
+    "supported by the supplied SRS." + GROUND))
+
 # What each agent is asked to do, step by step, and the JSON shape it must answer in.
 REQUIREMENTS = ("List the software requirements from the brief and evidence: 8-10 requirements covering functional and "
                 "non-functional needs (security, privacy, regulatory, audit, performance). Every acceptance criterion must "
@@ -108,6 +178,10 @@ RATE = ("Rate every listed decision factor Low, Medium or High from the brief on
         "future regulation. Cite only requirement IDs behind each rating.", Factors)
 PLAN = ("The chosen SDLC, score, score drivers and other scores are given. In 2-3 plain sentences explain why the chosen "
         "model fits, naming its score drivers and requirement IDs. Never mention evidence IDs and do not write a workflow.", Plan)
+IEEE_INTRO = ("Turn the supplied SRS into the introduction and overall-description content of an IEEE 830-1998 SRS. "
+              "Be concise, use only supplied facts, and leave uncertain details as assumptions or exclusions.", IeeeIntro)
+IEEE_SPECIFIC = ("Turn the supplied SRS into concise IEEE 830-1998 specific requirements. Use black-box shall statements "
+                 "for functions and quality. Do not invent implementation details, costs, schedules, or test plans.", IeeeSpecific)
 
 
 async def ask(agent: LlmAgent, step: tuple[str, type[BaseModel]], context: str, trace: list) -> dict:

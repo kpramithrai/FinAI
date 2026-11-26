@@ -35,6 +35,19 @@ export type SDLC = {
     implication: string;
   }[];
 };
+export type AgentId = "analyst" | "planner" | "writer";
+export type Ieee = {
+  purpose: string; included: string[]; excluded: string[];
+  definitions: { term: string; definition: string }[]; perspective: string;
+  productFunctions: string[]; users: { user: string; characteristics: string }[];
+  constraints: string[]; dependencies: string[];
+  interfaces: { user: string[]; hardware: string[]; software: string[]; communication: string[]; file: string[] };
+  functions: { name: string; input: string; processing: string[]; output: string; requirement: string }[];
+  performance: string[]; entities: { entity: string; attributes: string[] }[];
+  relationships: string[]; designConstraints: string[];
+  quality: { attribute: string; requirement: string }[];
+  actors: { actor: string; useCases: string[] }[]; businessRules: string[]; references: string[];
+};
 export type Span = {
   name: string;
   kind: string;
@@ -53,13 +66,14 @@ export type Item = {
   strong?: string;
   srs?: SRS;
   sdlc?: SDLC;
+  ieee?: Ieee;
   steps?: Span[];
   messages?: { from: string; to: string; text: string }[];
 };
 export type RunEvent = {
   type: string;
   stage?: string;
-  agents?: string[];
+  agents?: AgentId[];
   item?: Item;
   id?: string;
   patch?: Partial<Item>;

@@ -14,7 +14,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 import rules
-from agents import OVERVIEW, PLAN, RATE, REQUIREMENTS, analyst, ask, planner
+from agents import IEEE_INTRO, IEEE_SPECIFIC, OVERVIEW, PLAN, RATE, REQUIREMENTS, analyst, ask, planner, writer
 
 app = FastAPI(title="FinAI")
 LOGS = Path(__file__).parent / "runs"
@@ -87,6 +87,20 @@ async def plan_sdlc(brief: str, srs: dict, trace: list) -> dict:
     }
 
 
+async def write_ieee(brief: str, srs: dict, trace: list) -> dict:
+    """Agent (iii): render the validated SRS into the bounded IEEE 830-1998 structure."""
+    source_requirements = [{key: requirement[key] for key in ("id", "statement", "category", "priority", "acceptance", "source")}
+                           for requirement in srs["requirements"]]
+    context = f"Brief:\n{brief}\n\nValidated SRS:\n{json.dumps({**srs, 'requirements': source_requirements})}"
+    intro, specific = await asyncio.gather(
+        ask(writer, IEEE_INTRO, context, trace),
+        ask(writer, IEEE_SPECIFIC, context, trace),
+    )
+    sources = sorted({requirement["source"] for requirement in srs["requirements"]
+                      if requirement["source"] not in {"brief", "answer", "NEEDS-VALIDATION"}})
+    return intro | specific | {"references": ["IEEE Std 830-1998", *sources]}
+
+
 async def run(s: Session, brief: str):
     """Intake → SRS → SDLC → human review."""
     brief = rules.mask(brief)
@@ -111,14 +125,17 @@ async def run(s: Session, brief: str):
 
     await s.emit("stage", stage="sdlc")
     await s.push("event", icon="handoff", text="Handed off to", strong="SDLC Planner")
-    await s.emit("working", agents=["planner"])
-    sdlc = await plan_sdlc(brief, srs, s.trace)
+    await s.emit("working", agents=["planner", "writer"])
+    sdlc, ieee = await asyncio.gather(plan_sdlc(brief, srs, s.trace), write_ieee(brief, srs, s.trace))
     chosen, ranking = sdlc["chosen"], sdlc["ranking"]
     await s.delegate(("FinAI", "planner", f"SRS attached ({len(srs['requirements'])} requirements). Recommend a lifecycle."),
                      ("planner", "FinAI", f"Rated {len(sdlc['factors'])} decision factors; scored {len(ranking)} models."),
-                     ("planner", "FinAI", f"{chosen} leads at {ranking[0]['score']}/100; {ranking[1]['model']} next at {ranking[1]['score']}."))
+                     ("planner", "FinAI", f"{chosen} leads at {ranking[0]['score']}/100; {ranking[1]['model']} next at {ranking[1]['score']}."),
+                     ("writer", "FinAI", "Formatted the validated baseline as an IEEE 830-1998 SRS."))
     await s.push("event", icon="doc", text="Created document", strong="SDLC recommendation")
     await s.push("sdlc", sdlc=sdlc)
+    await s.push("event", icon="doc", text="Created document", strong="IEEE 830 SRS")
+    await s.push("ieee", ieee=ieee, title=f"{srs['title']} — IEEE 830-1998 SRS")
 
     await s.emit("stage", stage="review")
     await s.say(f"Done. **{chosen}** fits best. Open a model in the ranking to see why it was or wasn't chosen.")

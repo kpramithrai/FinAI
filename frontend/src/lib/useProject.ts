@@ -1,7 +1,7 @@
 import { useEffect, useReducer, useState } from "react";
-import type { Item, Project, RunEvent } from "./types";
+import type { AgentId, Item, Project, RunEvent } from "./types";
 
-type State = { items: Item[]; stage: string; agents: string[] };
+type State = { items: Item[]; stage: string; agents: AgentId[] };
 const initial: State = { items: [], stage: "intake", agents: [] };
 export function reduceEvents(state: State, event: RunEvent): State {
   if (event.type === "reset") return initial;

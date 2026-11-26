@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Home, steps } from "@/components/home";
 import { ProjectView, Stepper } from "@/components/project-view";
 import { SpanRow } from "@/components/activity";
+import { IeeeExportButton } from "@/components/documents";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,8 @@ export default function App() {
   const isHome = !project.id;
   const spans = project.items.flatMap((i) => i.steps || []);
   const tokens = spans.reduce((n, s) => n + s.tokens, 0);
+  const srs = [...project.items].reverse().find((item) => item.kind === "srs")?.srs;
+  const ieeeItems = project.items.filter((item) => item.kind === "ieee" && item.ieee);
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -131,6 +134,17 @@ export default function App() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex-1 space-y-1.5 overflow-y-auto p-4">
+            {ieeeItems.length > 0 && (
+              <section className="mb-5 border-b pb-5">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Documents</p>
+                {ieeeItems.map((item) => srs && item.ieee && (
+                  <div key={item.id} className="flex items-center gap-2 rounded-xl border p-3">
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium">PDF · IEEE 830 SRS</p>
+                    <IeeeExportButton title={item.title || "IEEE 830 SRS"} ieee={item.ieee} srs={srs} compact />
+                  </div>
+                ))}
+              </section>
+            )}
             {spans.length ? (
               spans.map((s, i) => <SpanRow key={i} span={s} />)
             ) : (

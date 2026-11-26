@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, CircleCheck, Loader2, ShieldAlert } from "lucide-react";
-import type { Item } from "@/lib/types";
+import type { Item, SRS } from "@/lib/types";
 import {
   Conversation,
   ConversationContent,
@@ -12,7 +12,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Composer } from "@/components/composer";
 import { Delegation } from "@/components/activity";
-import { SdlcDocument, SrsDocument } from "@/components/documents";
+import { IeeeCard, SdlcDocument, SrsDocument } from "@/components/documents";
 import { cn } from "@/lib/utils";
 
 type Echo = { id: string; after: string | null; text: string };
@@ -79,13 +79,14 @@ export function ProjectView({
 }: {
   items: Item[];
   stage: string;
-  agents: string[];
+  agents: ("analyst" | "planner" | "writer")[];
   pending: boolean;
   brief?: string;
   onReply: (body: unknown) => Promise<boolean>;
 }) {
   const [echoes, setEchoes] = useState<Echo[]>([]);
   const lastId = items.at(-1)?.id ?? null;
+  const srs = [...items].reverse().find((item) => item.kind === "srs")?.srs;
   const done = stage === "done";
   const working = agents.length > 0 && !done;
 
@@ -110,14 +111,14 @@ export function ProjectView({
           {echoesAfter(null)}
           {items.map((item) => (
             <div key={item.id} className="contents">
-              <Row item={item} pending={pending} onReply={onReply} />
+              <Row item={item} srs={srs} pending={pending} onReply={onReply} />
               {echoesAfter(item.id)}
             </div>
           ))}
           {working && (
             <div role="status" className="flex items-center gap-3 text-sm">
               <Loader2 className="size-4 animate-spin text-muted-foreground" />
-              <span className="font-medium">{agents.includes("analyst") ? "Analyst" : "Planner"}</span>
+              <span className="font-medium">{agents.includes("analyst") ? "Analyst" : agents.includes("writer") ? "IEEE Writer" : "Planner"}</span>
               <Shimmer className="text-sm">{workingText(stage)}</Shimmer>
             </div>
           )}
@@ -161,10 +162,12 @@ export function ProjectView({
 
 function Row({
   item,
+  srs,
   pending,
   onReply,
 }: {
   item: Item;
+  srs?: SRS;
   pending: boolean;
   onReply: (body: unknown) => Promise<boolean>;
 }) {
@@ -198,6 +201,9 @@ function Row({
       return item.srs ? <SrsDocument srs={item.srs} /> : null;
     case "sdlc":
       return item.sdlc ? <SdlcDocument sdlc={item.sdlc} /> : null;
+    case "ieee": {
+      return item.ieee && srs ? <IeeeCard title={item.title || "IEEE 830 SRS"} ieee={item.ieee} srs={srs} /> : null;
+    }
     case "notice":
       return (
         <Alert className="rounded-xl border-warning-border bg-warning-surface text-warning">

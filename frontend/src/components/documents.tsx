@@ -3,12 +3,14 @@ import type { ReactNode } from "react";
 import {
   ChevronRight,
   Download,
+  FileDown,
   FileText,
   Layers,
   ShieldCheck,
   Trophy,
 } from "lucide-react";
-import type { SDLC, SRS } from "@/lib/types";
+import type { Ieee, SDLC, SRS } from "@/lib/types";
+import { ieeeHtml, printPdf } from "@/lib/export";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -131,6 +133,26 @@ function DocTabs({ tabs, children }: { tabs: { value: string; label: ReactNode }
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h3 className="mb-2 mt-5 text-xs font-medium text-muted-foreground first:mt-0">{children}</h3>;
+}
+
+export function IeeeCard({ title, ieee, srs }: { title: string; ieee: Ieee; srs: SRS }) {
+  return (
+    <section className="w-full overflow-hidden rounded-2xl border bg-card">
+      <header className="flex items-start gap-3 border-b bg-muted/70 px-5 py-4 sm:px-6">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700"><FileDown className="size-5" /></div>
+        <div className="min-w-0 flex-1"><p className="text-xs font-medium text-muted-foreground">IEEE Std 830-1998</p><h2 className="text-lg font-semibold leading-tight">{title}</h2></div>
+        <IeeeExportButton title={title} ieee={ieee} srs={srs} />
+      </header>
+      <div className="space-y-2 px-5 py-4 text-sm text-foreground/80 sm:px-6">
+        <p>Formatted IEEE 830 SRS with introduction, overall description, specific requirements, appendices and index.</p>
+        <p className="text-xs text-muted-foreground">Choose “Save as PDF” in the print dialog to download it.</p>
+      </div>
+    </section>
+  );
+}
+
+export function IeeeExportButton({ title, ieee, srs, compact = false }: { title: string; ieee: Ieee; srs: SRS; compact?: boolean }) {
+  return <Button variant="outline" size="sm" className="rounded-full" onClick={() => printPdf(ieeeHtml(title, ieee, srs))}><Download />{!compact && <span className="hidden sm:inline">Export PDF</span>}<span className={compact ? "" : "sr-only"}>Export PDF</span></Button>;
 }
 
 export function SrsDocument({ srs }: { srs: SRS }) {
